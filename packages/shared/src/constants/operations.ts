@@ -1,0 +1,61 @@
+export const PRODUCTION_STATES = {
+  PENDING: 'PENDING',
+  ASSIGNED: 'ASSIGNED',
+  IN_PRODUCTION: 'IN_PRODUCTION',
+  COMPLETED: 'COMPLETED',
+  ON_HOLD: 'ON_HOLD',
+  REWORK: 'REWORK',
+} as const;
+
+export type ProductionState = (typeof PRODUCTION_STATES)[keyof typeof PRODUCTION_STATES];
+
+export const QC_STATES = {
+  PENDING: 'PENDING',
+  PASSED: 'PASSED',
+  FAILED: 'FAILED',
+  REWORK: 'REWORK',
+} as const;
+
+export type QcState = (typeof QC_STATES)[keyof typeof QC_STATES];
+
+export const PACKING_STATES = {
+  PENDING: 'PENDING',
+  PACKED: 'PACKED',
+  REPACK_REQUIRED: 'REPACK_REQUIRED',
+} as const;
+
+export type PackingState = (typeof PACKING_STATES)[keyof typeof PACKING_STATES];
+
+export const SHIPPING_STATES = {
+  PENDING: 'PENDING',
+  READY_TO_SHIP: 'READY_TO_SHIP',
+  SHIPPED: 'SHIPPED',
+  OUT_FOR_DELIVERY: 'OUT_FOR_DELIVERY',
+  DELIVERED: 'DELIVERED',
+  DELIVERY_FAILED: 'DELIVERY_FAILED',
+} as const;
+
+export type ShippingState = (typeof SHIPPING_STATES)[keyof typeof SHIPPING_STATES];
+
+export const RETURN_STATES = {
+  REQUESTED: 'REQUESTED',
+  UNDER_REVIEW: 'UNDER_REVIEW',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  RETURNED: 'RETURNED',
+  REFUND_PENDING: 'REFUND_PENDING',
+  REFUNDED: 'REFUNDED',
+} as const;
+
+export type ReturnState = (typeof RETURN_STATES)[keyof typeof RETURN_STATES];
+
+export const REFUND_STATES = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type RefundState = (typeof REFUND_STATES)[keyof typeof REFUND_STATES];

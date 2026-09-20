@@ -1,0 +1,32 @@
+{
+  "name": "deepa-handmade",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deepa Handmade - handmade wire kudai & basket e-commerce platform (monorepo)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:web": "npm run dev --workspace @deepa/web",
+    "dev:api": "npm run start:dev --workspace @deepa/api",
+    "dev": "npm run dev:api",
+    "build": "npm run build --workspace @deepa/shared && npm run build --workspace @deepa/api && npm run build --workspace @deepa/web",
+    "build:api": "npm run build --workspace @deepa/api",
+    "build:web": "npm run build --workspace @deepa/web",
+    "build:shared": "npm run build --workspace @deepa/shared",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:ci": "npm run test:ci --workspaces --if-present",
+    "infra:up": "docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env up -d --wait",
+    "infra:down": "docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env down",
+    "infra:logs": "docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env logs -f --tail=100 mongodb",
+    "infra:status": "docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env ps",
+    "infra:reset": "node -e \"console.log('WARNING: infra:reset destroys the MongoDB data volume (docker compose down -v). Data loss is permanent. Run only when you intend to wipe local data.')\" && docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env down -v"
+  },
+  "devDependencies": {}
+}

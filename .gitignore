@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+.next/
+out/
+.env
+.env.local
+.env.*.local
+*.log
+.oxlintcache
+*.tsbuildinfo
+.DS_Store
