@@ -9,7 +9,9 @@ import {
   HealthIndicatorResult,
   MemoryHealthIndicator,
 } from '@nestjs/terminus';
+import { ApiTags } from '@nestjs/swagger';
 import { Connection } from 'mongoose';
+import { Public } from '../../common/decorators/public.decorator.js';
 
 const CONNECTION_STATES = [
   'disconnected',
@@ -18,6 +20,8 @@ const CONNECTION_STATES = [
   'disconnecting',
 ] as const;
 
+@ApiTags('health')
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(
@@ -36,6 +40,7 @@ export class HealthController {
     const diskPath = this.config.get<string>('health.diskPath', '.');
 
     return this.health.check([
+      () => ({ app: { status: 'up' } }),
       () => this.memory.checkHeap('memory_heap', heapLimit),
       () => this.disk.checkStorage('storage', { path: diskPath, thresholdPercent: 0.9 }),
       () => this.checkDatabase(),

@@ -21,6 +21,7 @@
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspace @deepa/api",
     "test:ci": "npm run test:ci --workspaces --if-present",
     "infra:up": "docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env up -d --wait",
     "infra:down": "docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env down",

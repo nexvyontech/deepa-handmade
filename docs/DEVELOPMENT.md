@@ -87,6 +87,34 @@ The endpoint never exposes the URI, credentials or database name.
 The API uses URI versioning under a global `api` prefix; new major versions
 would use `/api/v2/...`.
 
+## HTTP, errors, request ids & logging
+
+- **Request id**: every request gets a correlation id. It is read from the
+  `X-Request-Id` header (configurable via `REQUEST_ID_HEADER`) or generated, and
+  is echoed in the `X-Request-Id` response header, filtered into error bodies,
+  and attached to log lines. Middleware order: `RequestIdMiddleware` runs before
+  `RateLimitMiddleware`.
+- **Error contract**: failures use a consistent body —
+  `{ statusCode, code, message, details?, requestId, path, timestamp }`. `code`
+  values live in `apps/api/src/common/errors/error-codes.ts`. Throw
+  `ApiException.*` factories (or `ValidationException`) from features; the global
+  `AllExceptionsFilter` also normalizes `HttpException`s and unknown errors. In
+  `production` internal messages and stack traces are never sent to clients.
+- **Validation**: a global typed `ValidationPipe` (whitelist, forbid unknown
+  values) returns 422 `ValidationException`s with per-field `details`.
+  `ParseObjectIdPipe` validates 24-hex Mongo ids on route params.
+- **Logging**: `StructuredLogger` emits `[Service] message key=value` in dev and
+  one JSON object per line in production (`LOG_FORMAT=json`). Sensitive values
+  are redacted; stacks are dev-only.
+- **Security**: global helmet + CORS from `CORS_ORIGINS`; in-app rate limiting
+  (in-memory, no Redis) returning standard 429s with `Retry-After`, bypassed for
+  `/health` and `/api/docs`. `AuthGuard`/`RolesGuard`/`PermissionsGuard` and the
+  `@Public()`/`@Roles()`/`@Permissions()` decorators are scaffolded but auth is
+  not yet wired in Phase 4.
+- **Business modules**: `apps/api/src/modules/*` contains one Nest module stub
+  per bounded context (auth … audit). They are registered-able, but none are
+  wired into `AppModule` until their phase.
+
 ## Local vs production
 
 The application code is identical in both environments — only environment

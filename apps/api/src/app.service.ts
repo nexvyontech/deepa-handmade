@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 export interface ApiInfo {
   name: string;
@@ -8,11 +9,13 @@ export interface ApiInfo {
 
 @Injectable()
 export class AppService {
+  constructor(private readonly config: ConfigService) {}
+
   getInfo(): ApiInfo {
     return {
-      name: 'deepa-handmade-api',
+      name: this.config.get<string>('name')!,
       version: '1',
-      environment: process.env.NODE_ENV ?? 'development',
+      environment: this.config.get<string>('env')!,
     };
   }
 }
