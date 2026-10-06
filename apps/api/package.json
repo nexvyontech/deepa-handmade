@@ -25,6 +25,7 @@
     "test:ci": "node scripts/run-jest.mjs --ci --coverage --config ./test/jest-ci.json"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1146.0",
     "@deepa/shared": "0.1.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.0",

@@ -15,6 +15,13 @@ import { validateEnv } from './config/env.validation.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { AuthModule } from './modules/auth/AuthModule.js';
+import { CategoriesModule } from './modules/categories/CategoriesModule.js';
+import { ProductsModule } from './modules/products/ProductsModule.js';
+import { VariantsModule } from './modules/variants/VariantsModule.js';
+import { PricingModule } from './modules/pricing/PricingModule.js';
+import { MediaModule } from './modules/media/MediaModule.js';
+import { CmsModule } from './modules/cms/CmsModule.js';
+import { SeoModule } from './modules/seo/SeoModule.js';
 
 @Module({
   imports: [
@@ -28,6 +35,13 @@ import { AuthModule } from './modules/auth/AuthModule.js';
     DatabaseModule,
     HealthModule,
     AuthModule,
+    CategoriesModule,
+    VariantsModule,
+    ProductsModule,
+    PricingModule,
+    MediaModule,
+    CmsModule,
+    SeoModule,
   ],
   controllers: [AppController],
   providers: [

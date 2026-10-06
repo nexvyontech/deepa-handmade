@@ -73,4 +73,33 @@ describe('validateEnv', () => {
       }),
     ).not.toThrow();
   });
+
+  it('rejects an unknown STORAGE_PROVIDER', () => {
+    expect(() => validateEnv({ ...base, STORAGE_PROVIDER: 's3' })).toThrow(
+      /Invalid STORAGE_PROVIDER/,
+    );
+  });
+
+  it('requires R2 credentials when STORAGE_PROVIDER=r2', () => {
+    expect(() => validateEnv({ ...base, STORAGE_PROVIDER: 'r2' })).toThrow(
+      /Missing required environment variable "R2_ACCOUNT_ID"/,
+    );
+  });
+
+  it('accepts STORAGE_PROVIDER=r2 when R2 credentials are complete', () => {
+    expect(() =>
+      validateEnv({
+        ...base,
+        STORAGE_PROVIDER: 'r2',
+        R2_ACCOUNT_ID: 'acct',
+        R2_ACCESS_KEY_ID: 'key',
+        R2_SECRET_ACCESS_KEY: 'secret',
+        R2_BUCKET: 'bucket',
+      }),
+    ).not.toThrow();
+  });
+
+  it('defaults to local storage without R2 credentials', () => {
+    expect(() => validateEnv(base)).not.toThrow();
+  });
 });

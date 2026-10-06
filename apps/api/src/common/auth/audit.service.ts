@@ -41,10 +41,11 @@ interface AuditLogDoc {
 }
 
 /**
- * Best-effort audit trail writer: persistence failures are logged and never
- * propagated, so an audit hiccup cannot fail an authentication flow. When the
- * database is not configured (documented no-DB boot mode) entries go to the
- * structured log only.
+ * Best-effort audit trail writer shared across modules (auth, catalogue, CMS,
+ * media, pricing): persistence failures are logged and never propagated, so an
+ * audit hiccup cannot fail the originating request. When the database is not
+ * configured (documented no-DB boot mode) entries go to the structured log
+ * only.
  */
 @Injectable()
 export class AuditService {
@@ -57,7 +58,7 @@ export class AuditService {
     private readonly model?: Model<AuditLogDoc>,
   ) {
     this.logger = new StructuredLogger(
-      'auth-audit',
+      'audit',
       config.get<LogFormat>('logging.format') ?? 'pretty',
     );
   }

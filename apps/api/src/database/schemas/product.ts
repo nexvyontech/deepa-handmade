@@ -1,5 +1,5 @@
 import { Schema, Types } from 'mongoose';
-import { localizedText, seoProps } from './common.js';
+import { localizedText, optionalLocalizedText, seoProps } from './common.js';
 
 const productSchema = new Schema(
   {
@@ -19,7 +19,7 @@ const productSchema = new Schema(
       height: { type: Number, min: 0 },
       unit: { type: String, trim: true },
     },
-    materialText: { ...localizedText },
+    materialText: { ...optionalLocalizedText },
     tags: { type: [String], default: [] },
     status: { type: String, enum: ['DRAFT', 'ACTIVE', 'INACTIVE', 'ARCHIVED'], default: 'DRAFT' },
     featured: { type: Boolean, default: false },

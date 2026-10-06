@@ -1,12 +1,12 @@
 import { Schema } from 'mongoose';
-import { localizedText, seoProps } from './common.js';
+import { localizedText, optionalLocalizedText, seoProps } from './common.js';
 
 const cmsPageSchema = new Schema(
   {
     slug: { type: String, required: true, unique: true, trim: true, lowercase: true },
     type: { type: String, enum: ['PAGE', 'POLICY', 'CONTACT', 'FAQ'], required: true },
     title: { ...localizedText },
-    content: { ...localizedText },
+    content: { ...optionalLocalizedText },
     seo: { ...seoProps },
     status: { type: String, enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'], default: 'DRAFT' },
     publishedAt: { type: Date },

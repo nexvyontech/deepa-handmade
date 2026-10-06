@@ -106,6 +106,52 @@ Authentication (Phase 4), all JSON under `/api/v1/auth`:
 | `POST /auth/admin/users/:userId/revoke-sessions` | roles guard (`SUPER_ADMIN`, `ADMIN`) | 204 |
 | `GET  /auth/admin/users/:userId/sessions`        | permissions guard (`staff.manage`)    | 200 |
 
+Catalogue (Phase 5), public and admin:
+
+| Method & path                                          | Auth        | Notes                                    |
+| ------------------------------------------------------ | ----------- | ---------------------------------------- |
+| `GET  /catalog/categories`                             | public      | 200, active categories flat list         |
+| `GET  /catalog/categories/:slug`                       | public      | 200/404                                  |
+| `POST /admin/categories`                               | perm `category.create` | 201          |
+| `GET  /admin/categories`                               | perm `category.read`   | 200 (incl. inactive) |
+| `GET  /admin/categories/:id`                           | perm `category.read`   | 200        |
+| `PATCH /admin/categories/:id`                          | perm `category.update` | 200        |
+| `DELETE /admin/categories/:id`                         | perm `category.delete` | 200, soft deactivate |
+| `GET  /catalog/products`                               | public      | 200 `{items,page,limit,total,totalPages}`, filters `q`, `category`, `color`, `size`, `handle`, `priceMin/Max`, `featured`, `sort`, `page`, `limit` |
+| `GET  /catalog/products/:slug`                         | public      | 200/404, pricing range + `media` + `variants` |
+| `GET  /catalog/products/:slug/variants`                | public      | 200, full variant views                    |
+| `GET  /admin/products`                                 | perm `product.read`    | 200 (admin filters incl. status)    |
+| `POST /admin/products`                                 | perm `product.create`  | 201, default `DRAFT`               |
+| `GET  /admin/products/:id`                             | perm `product.read`    | 200 (includes hidden media)         |
+| `PATCH /admin/products/:id`                            | perm `product.update`  | 200                                   |
+| `DELETE /admin/products/:id`                           | perm `product.delete`  | 200, soft `ARCHIVED`                  |
+| `GET  /admin/products/:id/media`                       | perm `product.read`    | 200, media of the product            |
+| `PUT  /admin/products/:id/media`                       | perm `product.update`  | 200, reorders the exact AVAILABLE set  |
+| `DELETE /admin/products/:id/media/:mediaId`            | perm `product.update`  | 200, detaches (hides) an image       |
+| `PATCH /admin/pricing/products/:productId`             | perm `price.update`    | 200, only entry point for price fields + audit `PRICE_CHANGED` |
+| `POST /admin/options` / `PATCH|DELETE /admin/options/:id` | perm `variant.*`    | option values (COLOR/SIZE/HANDLE)      |
+| `POST /admin/variants` / `PATCH|DELETE /admin/variants/:id`, `GET /admin/variants` | perm `variant.*` | variants, unique `comboHash`, auto SKU |
+
+CMS & SEO (Phase 5):
+
+| Method & path                                  | Auth            | Notes                                    |
+| ---------------------------------------------- | --------------- | ---------------------------------------- |
+| `GET  /cms/pages`                              | public          | 200, published pages only                |
+| `GET  /cms/pages/:slug`                        | public          | 200/404                                  |
+| `GET  /cms/banners`                            | public          | 200, active + in date window             |
+| `GET  /admin/cms/pages`                        | perm `cms.read` | 200, all statuses                        |
+| `POST /admin/cms/pages`                        | perm `cms.create` | 201, `DRAFT` page                      |
+| `PATCH /admin/cms/pages/:id` / `PATCH .../status` `{action: publish\|unpublish\|archive}` | perm `cms.update`/`cms.publish` | 200 |
+| `DELETE /admin/cms/pages/:id`                  | perm `cms.delete` | 200, soft `ARCHIVED`                    |
+| `GET  /admin/banners` / `POST /admin/banners` / `PATCH|DELETE /admin/banners/:id` | perm `cms.*` | banner lifecycle, soft deactivate |
+| `GET  /admin/seo/:entityType/:entityId`        | perm `seo.read`   | `entityType` ∈ product\|category\|page  |
+| `PUT  /admin/seo/:entityType/:entityId`        | perm `seo.update` | 200, writes the entity SEO block       |
+| `POST /media/upload`                           | perm `media.upload` | 201, multipart `file` + `ownerType`/`ownerId` |
+| `GET  /media` (filters) / `GET  /media/:id`    | perm `media.read` | 200                                        |
+| `GET  /media/:id/content`                      | public*         | streams/redirects; private bucket requires `media.read` |
+| `PATCH /media/:id`                             | perm `media.update` | 200                                      |
+| `DELETE /media/:id`                            | perm `media.delete` | 204, hard delete (blocked while referenced) |
+
 The API uses URI versioning under a global `api` prefix; new major versions
 would use `/api/v2/...`.
 
@@ -158,6 +204,44 @@ would use `/api/v2/...`.
 - `AUDIT_ACTIONS` in `database/schemas/audit-log.ts` was extended additively for
   the auth events above.
 
+## Catalogue, CMS, media & SEO (Phase 5)
+
+- Playbooks are `docs/PHASE5_CATALOGUE_CMS.md` and `docs/PHASE2_DATABASE_DESIGN.md`
+  (guards, list/pagination shapes, slug rules). Highlights:
+- **Product soft-delete**: `DELETE /admin/products/:id` flips status to
+  `ARCHIVED` (never blocks; ghosts disappear from every public list). The same
+  `ARCHIVED` status is used for CMS pages and banners.
+- **Pricing governance**: product `basePrice`/`mrp`/`moq` are only writable via
+  `PATCH /admin/pricing/products/:productId` (guard `price.update`), which can
+  also set a variant `priceDelta` and writes an `EARNEST_MONEY`-style
+  `PRICE_CHANGED` audit entry. Variant DTOs never contain price fields.
+- **Variants**: a variant is a unique `{optionValueIds}` combination under a
+  product — uniqueness via a `comboHash` (SHA-1 of ordered value ids), SKU is
+  auto-generated from the product SKU stem, and SKUs/price deltas are unique per
+  product.
+- **Search & filter** (`GET /catalog/products`): `q` runs an escaped,
+  case-insensitive regex over each localized `searchText`; `category` filters by
+  descendant expansion (`category.ancestorIds`); allow-listed sorts are
+  `featured-desc` (default), `price-asc`, `price-desc`, `newest-desc`,
+  `name-asc`.
+- **Localized slugs & SEO**: every product/category/page stores an SEO block
+  (`title`, `metaDescription`, `keywords`, `canonicalUrl`, `ogImageMediaId`,
+  `robotsNoIndex`) written through `PUT /admin/seo/:entityType/:entityId`; slugs
+  are per-locale (`slug.en`, `slug.ta`) with uniqueness enforced by versioned
+  `*_slug_key` lookup schemas.
+- **Media**: files validated by magic-byte sniffing (JPEG/PNG/WebP/GIF ≤ 5 MB,
+  capacity warnings at 80%/100%), stored in a pluggable
+  `StorageDriver` (`LocalStorageDriver` local, `AwsS3Driver` behind
+  `S3_ENABLED=1`), uploaded as multipart with `ownerType` (product/category/
+  page/banner/user). Harmless ID `ORDER` guard prevents unauthenticated
+  enumeration; content is streamed/redirected with cache headers.
+- **Boot modes**: every Phase 5 module registers its Mongoose models only when
+  `MONGODB_URI` is set; without a database the public routes answer 503
+  `SERVICE_UNAVAILABLE`. Media upload also 503s when `storage.baseDir` is not
+  configured. Media `PATCH`/`order`/`content` deliberately take **any** valid id
+  (no per-resource ownership check) because media is currently untyped — see the
+  Phase 5 playbook's open questions.
+
 ## HTTP, errors, request ids & logging
 
 - **Request id**: every request gets a correlation id. It is read from the
@@ -183,8 +267,10 @@ would use `/api/v2/...`.
   registered as global `APP_GUARD`s with `@Public()`/`@Roles()`/
   `@Permissions()` (see **Authentication** below).
 - **Business modules**: `apps/api/src/modules/*` contains one Nest module per
-  bounded context. `auth` is implemented (Phase 4); the rest remain stubs and
-  are wired into `AppModule` when their phase lands.
+  bounded context. `auth` (Phase 4) and `catalogue`/`categories`/`products`/
+  `variants`/`pricing`/`cms`/`media`/`seo`/`health`/`app` are implemented
+  (Phases 4–5); the rest remain stubs and are wired into `AppModule` when their
+  phase lands.
 
 ## Local vs production
 

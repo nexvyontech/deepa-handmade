@@ -1,12 +1,12 @@
 import { Schema, Types } from 'mongoose';
-import { localizedText } from './common.js';
+import { optionalLocalizedText } from './common.js';
 
 const bannerSchema = new Schema(
   {
-    title: { ...localizedText },
+    title: { ...optionalLocalizedText },
     imageMediaId: { type: Types.ObjectId, ref: 'Media', required: true },
     ctaUrl: { type: String, trim: true },
-    ctaLabel: { ...localizedText },
+    ctaLabel: { ...optionalLocalizedText },
     target: { type: String, enum: ['PRODUCT', 'CATEGORY', 'PAGE', 'EXTERNAL'] },
     location: { type: String, default: 'HOME', trim: true },
     sortOrder: { type: Number, default: 0 },

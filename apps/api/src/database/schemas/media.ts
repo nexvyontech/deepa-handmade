@@ -1,5 +1,5 @@
 import { Schema, Types } from 'mongoose';
-import { localizedText } from './common.js';
+import { optionalLocalizedText } from './common.js';
 
 const mediaSchema = new Schema(
   {
@@ -13,7 +13,7 @@ const mediaSchema = new Schema(
     width: { type: Number, min: 0 },
     height: { type: Number, min: 0 },
     durationSec: { type: Number, min: 0 },
-    alt: { ...localizedText },
+    alt: { ...optionalLocalizedText },
     status: {
       type: String,
       enum: ['AVAILABLE', 'PENDING_MODERATION', 'REJECTED', 'HIDDEN'],

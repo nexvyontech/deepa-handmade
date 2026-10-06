@@ -1,13 +1,10 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { AuditService } from '../../common/auth/audit.service.js';
 import { PasswordHasherService } from '../../common/auth/password-hasher.service.js';
 import { RefreshSessionService } from '../../common/auth/refresh-session.service.js';
 import { RefreshTokenService } from '../../common/auth/refresh-token.service.js';
 import { AccessTokenService } from '../../common/auth/token.service.js';
 import {
-  AUDIT_LOG_MODEL,
-  auditLogSchema,
   PASSWORD_RESET_TOKEN_MODEL,
   passwordResetTokenSchema,
   ROLE_MODEL,
@@ -17,6 +14,7 @@ import {
   userRefreshTokenSchema,
   userSchema,
 } from '../../database/schemas/index.js';
+import { AuditModule } from '../audit/AuditModule.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 
@@ -31,24 +29,25 @@ const hasMongoUri = (): boolean => !!process.env.MONGODB_URI;
  * fails with 503 SERVICE_UNAVAILABLE.
  */
 @Module({
-  imports: hasMongoUri()
-    ? [
-        MongooseModule.forFeature([
-          { name: USER_MODEL, schema: userSchema },
-          { name: ROLE_MODEL, schema: roleSchema },
-          { name: USER_REFRESH_TOKEN_MODEL, schema: userRefreshTokenSchema },
-          { name: PASSWORD_RESET_TOKEN_MODEL, schema: passwordResetTokenSchema },
-          { name: AUDIT_LOG_MODEL, schema: auditLogSchema },
-        ]),
-      ]
-    : [],
+  imports: [
+    AuditModule,
+    ...(hasMongoUri()
+      ? [
+          MongooseModule.forFeature([
+            { name: USER_MODEL, schema: userSchema },
+            { name: ROLE_MODEL, schema: roleSchema },
+            { name: USER_REFRESH_TOKEN_MODEL, schema: userRefreshTokenSchema },
+            { name: PASSWORD_RESET_TOKEN_MODEL, schema: passwordResetTokenSchema },
+          ]),
+        ]
+      : []),
+  ],
   controllers: [AuthController],
   providers: [
     PasswordHasherService,
     AccessTokenService,
     RefreshTokenService,
     RefreshSessionService,
-    AuditService,
     AuthService,
   ],
   exports: [AccessTokenService],

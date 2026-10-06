@@ -6,6 +6,8 @@ const NUMERIC_KEYS = [
   'THROTTLE_LIMIT',
   'HEALTH_MEMORY_HEAP_MB',
   'SHUTDOWN_TIMEOUT_MS',
+  'MEDIA_MAX_IMAGE_MB',
+  'MEDIA_MAX_VIDEO_MB',
 ] as const;
 
 const BOOLEAN_KEYS = ['TRUST_PROXY', 'SWAGGER_ENABLED'] as const;
@@ -49,6 +51,30 @@ export function validateEnv(
   if (config.LOG_FORMAT !== undefined && config.LOG_FORMAT !== '') {
     if (!isValidLogFormat(config.LOG_FORMAT)) {
       throw new Error(`Invalid LOG_FORMAT "${String(config.LOG_FORMAT)}". Allowed: pretty, json.`);
+    }
+  }
+
+  const storageProvider = String(config.STORAGE_PROVIDER ?? 'local').trim().toLowerCase();
+  if (!['local', 'r2'].includes(storageProvider)) {
+    throw new Error(
+      `Invalid STORAGE_PROVIDER "${storageProvider}". Allowed: local, r2.`,
+    );
+  }
+
+  if (storageProvider === 'r2') {
+    const r2Required = [
+      'R2_ACCOUNT_ID',
+      'R2_ACCESS_KEY_ID',
+      'R2_SECRET_ACCESS_KEY',
+      'R2_BUCKET',
+    ];
+    for (const key of r2Required) {
+      const value = String(config[key] ?? '').trim();
+      if (!value) {
+        throw new Error(
+          `Missing required environment variable "${key}" (STORAGE_PROVIDER=r2).`,
+        );
+      }
     }
   }
 

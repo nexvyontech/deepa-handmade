@@ -42,6 +42,27 @@ export interface ShutdownConfig {
   timeoutMs: number;
 }
 
+export type StorageProvider = 'local' | 'r2';
+
+export interface R2Config {
+  accountId?: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  bucket?: string;
+  publicHost?: string;
+}
+
+export interface StorageConfig {
+  provider: StorageProvider;
+  localDir: string;
+  r2: R2Config;
+}
+
+export interface MediaConfig {
+  maxImageBytes: number;
+  maxVideoBytes: number;
+}
+
 export interface ApiConfig {
   prefix: string;
 }
@@ -62,6 +83,8 @@ export interface AppConfig {
   logging: LoggingConfig;
   request: RequestConfig;
   shutdown: ShutdownConfig;
+  storage: StorageConfig;
+  media: MediaConfig;
 }
 
 function toInt(value: string | undefined, fallback: number): number {
@@ -134,6 +157,21 @@ export default (): AppConfig => {
     },
     shutdown: {
       timeoutMs: toInt(process.env.SHUTDOWN_TIMEOUT_MS, 10000),
+    },
+    storage: {
+      provider: (process.env.STORAGE_PROVIDER || 'local').trim().toLowerCase() as StorageProvider,
+      localDir: process.env.MEDIA_LOCAL_DIR || 'uploads',
+      r2: {
+        accountId: secret(process.env.R2_ACCOUNT_ID),
+        accessKeyId: secret(process.env.R2_ACCESS_KEY_ID),
+        secretAccessKey: secret(process.env.R2_SECRET_ACCESS_KEY),
+        bucket: secret(process.env.R2_BUCKET),
+        publicHost: secret(process.env.R2_PUBLIC_HOST),
+      },
+    },
+    media: {
+      maxImageBytes: toInt(process.env.MEDIA_MAX_IMAGE_MB, 10) * 1024 * 1024,
+      maxVideoBytes: toInt(process.env.MEDIA_MAX_VIDEO_MB, 100) * 1024 * 1024,
     },
   };
 };
