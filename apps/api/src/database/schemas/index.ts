@@ -1,7 +1,7 @@
 import type { Schema } from 'mongoose';
 
 import { addressSchema, ADDRESS_MODEL, default as addressSchemaDefault } from './address.js';
-import { auditLogSchema, AUDIT_LOG_MODEL, default as auditLogSchemaDefault } from './audit-log.js';
+import { auditLogSchema, AUDIT_ACTIONS, AUDIT_LOG_MODEL, default as auditLogSchemaDefault } from './audit-log.js';
 import { bannerSchema, BANNER_MODEL, default as bannerSchemaDefault } from './banner.js';
 import { cartSchema, CART_MODEL, default as cartSchemaDefault } from './cart.js';
 import { categorySchema, CATEGORY_MODEL, default as categorySchemaDefault } from './category.js';
@@ -133,3 +133,4 @@ export { bannerSchema, bannerSchemaDefault, BANNER_MODEL };
 export { invoiceSchema, invoiceSchemaDefault, INVOICE_MODEL };
 export { siteSettingSchema, siteSettingSchemaDefault, SITE_SETTING_MODEL };
 export { auditLogSchema, auditLogSchemaDefault, AUDIT_LOG_MODEL };
+export { AUDIT_ACTIONS };

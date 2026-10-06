@@ -51,6 +51,11 @@ also runs without a database — with `MONGODB_URI` empty the health endpoint
 reports `database.mode: "not_configured"` and no Mongoose connection is made,
 which is useful for tests and the build.
 
+Auth (Phase 4) also needs `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` — give
+them long random values in `apps/api/.env`. With them empty the API still
+boots, but token issuance/verification fails with 503; production refuses to
+start without them (`config/env.validation.ts`).
+
 ## Running locally
 
 | Command                  | What it does                                     |
@@ -84,8 +89,74 @@ The endpoint never exposes the URI, credentials or database name.
 - `GET /api/v1/info` — API metadata
 - `GET /api/docs` — Swagger UI
 
+Authentication (Phase 4), all JSON under `/api/v1/auth`:
+
+| Method & path                      | Auth                | Notes                                     |
+| ---------------------------------- | ------------------- | ----------------------------------------- |
+| `POST /auth/register`              | public              | 201, creates an `ACTIVE` CUSTOMER + tokens |
+| `POST /auth/login`                 | public              | 200 `{accessToken, expiresIn, refreshToken, user}` |
+| `POST /auth/refresh`               | public (body token) | 200, rotates the refresh session          |
+| `POST /auth/logout`                | access token        | 204, revokes the presented session        |
+| `POST /auth/logout-all`            | access token        | 204, revokes every session for the user   |
+| `GET  /auth/me`                    | access token        | 200, fresh profile from the database      |
+| `POST /auth/change-password`       | access token        | 204, revokes all sessions                 |
+| `POST /auth/password-reset/request`| public              | 202, always generic; `resetToken` echoed outside production |
+| `POST /auth/password-reset/confirm`| public              | 204, single-use token, revokes sessions   |
+| `GET  /auth/sessions`              | access token        | 200, the caller's refresh sessions        |
+| `POST /auth/admin/users/:userId/revoke-sessions` | roles guard (`SUPER_ADMIN`, `ADMIN`) | 204 |
+| `GET  /auth/admin/users/:userId/sessions`        | permissions guard (`staff.manage`)    | 200 |
+
 The API uses URI versioning under a global `api` prefix; new major versions
 would use `/api/v2/...`.
+
+## Authentication (Phase 4)
+
+- **Access tokens** are stateless JWTs (`sub`, `role`, `permissions`,
+  `sessionId`, `iat`, `exp`) signed with `JWT_ACCESS_SECRET` (default TTL 15m).
+  `AuthGuard` verifies them on every non-`@Public()` route and attaches
+  `request.user = { id, role, roles, permissions, sessionId }` — there is **no
+  per-request database read**, so a suspension/role change only takes effect at
+  the next token issuance (bounded by the 15-minute TTL). `AuthGuard` runs
+  first, then `RolesGuard`, then `PermissionsGuard` (all `APP_GUARD`, order
+  matters).
+- **Refresh tokens** are opaque 256-bit random values passed in a JSON body
+  (`{refreshToken}`), stored only as SHA-256 hashes in `user-refresh-tokens`.
+  Every refresh rotates the token; replaying a rotated token triggers **reuse
+  detection**: the whole lineage (walked via `replacedByRef`) is revoked, the
+  attempt is audited (`TOKEN_REUSE_DETECTED`) and answered with 401.
+- **Lockout**: five consecutive bad passwords set `lockedUntil` (+15 minutes);
+  while locked every login answers 429 `RATE_LIMITED`. Unknown users and bad
+  passwords share the same 401 `Invalid credentials` response (no user
+  enumeration), as do password-reset requests (always 202).
+- **Passwords** use argon2id (64 MiB, t=3, p=1; `PasswordHasherService`).
+  A password change or reset revokes all refresh sessions and clears the
+  lockout; `passwordChangedAt` is stamped.
+- **Audit**: authentication events are written to `audit-logs` best-effort
+  (`USER_REGISTERED`, `USER_LOGIN_SUCCEEDED`, `USER_LOGIN_FAILED`,
+  `USER_LOGOUT`, `USER_LOGOUT_ALL`, `USER_PASSWORD_CHANGED`,
+  `USER_PASSWORD_RESET_*`, `USER_SESSION_REVOKED`, `TOKEN_REUSE_DETECTED`,
+  `ACCOUNT_LOCKED` — an additive extension of the Phase 2 `AUDIT_ACTIONS`
+  enum). Entries are only persisted when the user entity exists; failures never
+  break the auth flow.
+- **Boot modes**: `AuthModule` registers its Mongoose models only when
+  `MONGODB_URI` is set (mirrors `DatabaseModule`); without a database every
+  auth workflow fails fast with 503 `SERVICE_UNAVAILABLE`. A missing
+  `JWT_ACCESS_SECRET` also fails with 503 (production enforces both via
+  `env.validation.ts`).
+
+### Decisions & open questions
+
+- Refresh tokens travel in a **JSON body, not a cookie** (no cookie-parser
+  dependency; the SPA/mobile clients hold the token). *Open:* switch to
+  `HttpOnly; Secure; SameSite=strict` cookies if the web client is same-site.
+- `password-reset/request` echoes `resetToken` in the response **only when
+  `NODE_ENV !== 'production'`** so local flows complete without a delivery
+  channel. *Open:* wire email/SMS/WhatsApp delivery and drop the echo.
+- Access tokens are **not revoked mid-lifetime** (stateless guard); the 15m TTL
+  bounds exposure. *Open:* short-lived tokens + a revocation check if instant
+  logout-everywhere is required.
+- `AUDIT_ACTIONS` in `database/schemas/audit-log.ts` was extended additively for
+  the auth events above.
 
 ## HTTP, errors, request ids & logging
 
@@ -108,12 +179,12 @@ would use `/api/v2/...`.
   are redacted; stacks are dev-only.
 - **Security**: global helmet + CORS from `CORS_ORIGINS`; in-app rate limiting
   (in-memory, no Redis) returning standard 429s with `Retry-After`, bypassed for
-  `/health` and `/api/docs`. `AuthGuard`/`RolesGuard`/`PermissionsGuard` and the
-  `@Public()`/`@Roles()`/`@Permissions()` decorators are scaffolded but auth is
-  not yet wired in Phase 4.
-- **Business modules**: `apps/api/src/modules/*` contains one Nest module stub
-  per bounded context (auth … audit). They are registered-able, but none are
-  wired into `AppModule` until their phase.
+  `/health` and `/api/docs`. `AuthGuard`/`RolesGuard`/`PermissionsGuard` are
+  registered as global `APP_GUARD`s with `@Public()`/`@Roles()`/
+  `@Permissions()` (see **Authentication** below).
+- **Business modules**: `apps/api/src/modules/*` contains one Nest module per
+  bounded context. `auth` is implemented (Phase 4); the rest remain stubs and
+  are wired into `AppModule` when their phase lands.
 
 ## Local vs production
 
