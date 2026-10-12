@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/provider";
+import { Button } from "@/components/ui/button";
 import type { OptionType } from "@/lib/constants";
 import type { VariantView } from "@/lib/types/api";
 import { formatINR } from "@/lib/utils/format";
@@ -14,19 +15,36 @@ const typeLabelKey: Record<OptionType, "colour" | "size" | "handleOption"> = {
   HANDLE: "handleOption",
 };
 
+export interface AddToCartPayload {
+  variantId?: string;
+  qty: number;
+}
+
 /**
- * Lets a shopper pick COLOUR / SIZE / HANDLE and shows the exact variant price
- * (base + priceDelta) without implying stock or "add to cart" (out of scope).
+ * Lets a shopper pick COLOUR / SIZE / HANDLE and, when `onAddToCart` is
+ * supplied, add the resolved variant (or a variant-less product) to the cart.
+ * Prices come from the variant view; the backend remains authoritative.
  */
 export function VariantSelector({
   variants,
   basePrice,
+  moq = 1,
+  onAddToCart,
 }: {
   variants: VariantView[];
   basePrice: number;
+  moq?: number;
+  onAddToCart?: (payload: AddToCartPayload) => void | Promise<void>;
 }) {
   const { localize, t } = useI18n();
   const [selected, setSelected] = useState<Partial<Record<OptionType, string>>>({});
+  const [rawQty, setRawQty] = useState(moq);
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+
+  const minQty = moq > 0 ? moq : 1;
+  // Derived so a later MOQ change can never leave the control below the minimum.
+  const qty = Math.max(rawQty, minQty);
 
   const groups = useMemo(() => {
     const byType = new Map<OptionType, VariantView["options"]>([]);
@@ -73,7 +91,7 @@ export function VariantSelector({
     return { min: Math.min(...values), max: Math.max(...values) };
   }, [activeVariants, basePrice]);
 
-  if (groups.length === 0) return null;
+  if (groups.length === 0 && !onAddToCart) return null;
 
   const toggle = (type: OptionType, id: string) => {
     setSelected((prev) => {
@@ -82,6 +100,23 @@ export function VariantSelector({
       else next[type] = id;
       return next;
     });
+  };
+
+  const canAdd = groups.length === 0 ? true : Boolean(exactVariant);
+
+  const handleAdd = async () => {
+    if (!onAddToCart || !canAdd || adding) return;
+    setAdding(true);
+    setAdded(false);
+    try {
+      await onAddToCart({ variantId: exactVariant?.id, qty });
+      setAdded(true);
+      window.setTimeout(() => setAdded(false), 2500);
+    } catch {
+      // The owner of onAddToCart surfaces the error message.
+    } finally {
+      setAdding(false);
+    }
   };
 
   return (
@@ -134,33 +169,79 @@ export function VariantSelector({
         </fieldset>
       ))}
 
-      <div className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm">
-        {exactVariant ? (
-          <div className="flex flex-col gap-1">
-            <span className="text-2xl font-semibold text-stone-900">
-              {formatINR(exactVariant.effectivePrice ?? basePrice + exactVariant.priceDelta)}
-            </span>
-            {exactVariant.variantSku ? (
-              <span className="text-xs text-stone-500">
-                {t("sku")}: {exactVariant.variantSku}
+      {groups.length > 0 ? (
+        <div className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm">
+          {exactVariant ? (
+            <div className="flex flex-col gap-1">
+              <span className="text-2xl font-semibold text-stone-900">
+                {formatINR(exactVariant.effectivePrice ?? basePrice + exactVariant.priceDelta)}
               </span>
-            ) : null}
+              {exactVariant.variantSku ? (
+                <span className="text-xs text-stone-500">
+                  {t("sku")}: {exactVariant.variantSku}
+                </span>
+              ) : null}
+            </div>
+          ) : isFullSelection ? (
+            <p className="text-stone-600">{t("combinationNotAvailable")}</p>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <span className="text-sm text-stone-500">{t("chooseAllOptions")}</span>
+              {prices ? (
+                <span className="text-lg font-medium text-stone-800">
+                  {prices.min === prices.max
+                    ? formatINR(prices.min)
+                    : `${formatINR(prices.min)} – ${formatINR(prices.max)}`}
+                </span>
+              ) : null}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {onAddToCart ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center rounded-lg border border-stone-300 bg-white">
+            <button
+              type="button"
+              onClick={() => setRawQty(Math.max(minQty, qty - 1))}
+              disabled={qty <= minQty}
+              aria-label={t("decreaseQty")}
+              className="px-3 py-2 text-lg leading-none text-stone-700 disabled:opacity-40"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={minQty}
+              value={qty}
+              onChange={(event) => {
+                const parsed = Number.parseInt(event.target.value, 10);
+                setRawQty(Number.isFinite(parsed) && parsed > minQty ? parsed : minQty);
+              }}
+              aria-label={t("quantity")}
+              className="w-12 border-x border-stone-200 py-2 text-center text-sm outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => setRawQty(qty + 1)}
+              aria-label={t("increaseQty")}
+              className="px-3 py-2 text-lg leading-none text-stone-700"
+            >
+              +
+            </button>
           </div>
-        ) : isFullSelection ? (
-          <p className="text-stone-600">{t("combinationNotAvailable")}</p>
-        ) : (
-          <div className="flex flex-col gap-1">
-            <span className="text-sm text-stone-500">{t("chooseAllOptions")}</span>
-            {prices ? (
-              <span className="text-lg font-medium text-stone-800">
-                {prices.min === prices.max
-                  ? formatINR(prices.min)
-                  : `${formatINR(prices.min)} – ${formatINR(prices.max)}`}
-              </span>
-            ) : null}
-          </div>
-        )}
-      </div>
+
+          <Button type="button" onClick={() => void handleAdd()} disabled={!canAdd || adding} loading={adding}>
+            {adding ? t("addingToCart") : added ? t("addedToCart") : t("addToCart")}
+          </Button>
+
+          <span className="text-xs text-stone-500">
+            {t("moq")}: {minQty}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }

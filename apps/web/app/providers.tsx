@@ -3,6 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import { I18nProvider } from "@/lib/i18n/provider";
 import { AuthProvider } from "@/lib/auth/context";
+import { CartProvider } from "@/lib/cart/context";
 
 /**
  * Client context stack shared by the storefront and admin (i18n + auth).
@@ -29,8 +30,10 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <I18nProvider>
       <AuthProvider>
-        <CryptoRandomPolyfill />
-        {children}
+        <CartProvider>
+          <CryptoRandomPolyfill />
+          {children}
+        </CartProvider>
       </AuthProvider>
     </I18nProvider>
   );

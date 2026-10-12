@@ -20,6 +20,8 @@ export interface RequestOptions {
    * - "none": never attach a token (public catalogue/CMS endpoints).
    */
   auth?: "auto" | "none";
+  /** Extra request headers (e.g. the guest cart session). Never overrides auth. */
+  headers?: Record<string, string>;
   timeoutMs?: number;
 }
 
@@ -73,12 +75,17 @@ function isAbort(error: unknown): boolean {
 }
 
 async function performFetch(opts: RequestOptions): Promise<FetchResult> {
-  const { method = "GET", path, query, body, formData, auth = "auto", timeoutMs } = opts;
+  const { method = "GET", path, query, body, formData, auth = "auto", headers: extraHeaders, timeoutMs } = opts;
   const token = auth === "auto" ? (readTokenPair()?.accessToken ?? null) : null;
 
   const headers = new Headers({ Accept: "application/json" });
   if (body !== undefined && formData === undefined) {
     headers.set("Content-Type", "application/json");
+  }
+  if (extraHeaders) {
+    for (const [key, value] of Object.entries(extraHeaders)) {
+      headers.set(key, value);
+    }
   }
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);

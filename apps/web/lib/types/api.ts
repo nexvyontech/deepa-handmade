@@ -208,3 +208,135 @@ export interface AdminPricing {
   mrp?: number;
   moq: number;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 7 — cart, addresses and checkout
+// ---------------------------------------------------------------------------
+
+export type CartIdentityKind = "GUEST" | "CUSTOMER";
+export type ShippingMethod = "FLAT_FREE_THRESHOLD";
+export type CartShippingStatus = "CONFIGURED" | "UNAVAILABLE";
+
+export interface CartOption {
+  optionType: string;
+  value: LocalizedText;
+  hex?: string;
+}
+
+export interface CartCustomDetails {
+  colorText?: string;
+  sizeText?: string;
+  handleText?: string;
+  notes?: string;
+}
+
+export interface CartItemView {
+  id: string;
+  productId: string;
+  productName: LocalizedText | null;
+  productSlug: string | null;
+  productSku: string | null;
+  variantId?: string;
+  variantSku?: string;
+  options: CartOption[];
+  customDetails?: CartCustomDetails;
+  qty: number;
+  moq: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface CartTotalsView {
+  subtotal: number;
+  discount: number;
+  shipping: number;
+  grandTotal: number;
+  shippingStatus: CartShippingStatus;
+  shippingMethod: ShippingMethod;
+}
+
+export interface CartView {
+  id: string;
+  identity: CartIdentityKind;
+  items: CartItemView[];
+  totals: CartTotalsView;
+  couponCode: string | null;
+  offerAppliedIds: string[];
+  version: number;
+  updatedAt?: string;
+}
+
+export type CartIssueCode = "ITEM_UNAVAILABLE" | "PRICE_CHANGED" | "QUANTITY_BELOW_MOQ" | "CART_EMPTY";
+
+export interface CartIssue {
+  code: CartIssueCode;
+  itemId?: string;
+  message: string;
+}
+
+export interface CartValidationResult {
+  cart: CartView;
+  issues: CartIssue[];
+}
+
+export interface AddressView {
+  id: string;
+  recipient: string;
+  mobile: string;
+  line1: string;
+  line2?: string;
+  villageTown: string;
+  district: string;
+  state: string;
+  pincode: string;
+  landmark?: string;
+  label?: string;
+  isDefault: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CheckoutInlineAddress {
+  recipient: string;
+  mobile: string;
+  line1: string;
+  line2?: string;
+  villageTown: string;
+  district: string;
+  state: string;
+  pincode: string;
+  landmark?: string;
+  label?: string;
+}
+
+export interface CheckoutAddressSnapshot extends CheckoutInlineAddress {
+  addressId?: string;
+}
+
+export interface ShippingQuote {
+  method: ShippingMethod;
+  shipping: number;
+  flatFee?: number;
+  freeThreshold?: number;
+}
+
+export interface CheckoutOrderSummary {
+  subtotal: number;
+  discount: number;
+  shipping: number;
+  grandTotal: number;
+}
+
+export interface CheckoutPreparation {
+  valid: boolean;
+  issues: CartIssue[];
+  cart: CartView;
+  address: CheckoutAddressSnapshot;
+  shipping: ShippingQuote;
+  summary: CheckoutOrderSummary;
+}
+
+export interface CheckoutPrepareInput {
+  addressId?: string;
+  address?: CheckoutInlineAddress;
+}

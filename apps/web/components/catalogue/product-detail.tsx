@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ProductGallery } from "./product-gallery";
-import { VariantSelector } from "./variant-selector";
+import { VariantSelector, type AddToCartPayload } from "./variant-selector";
 import { Badge } from "@/components/ui/badge";
+import { FormFeedback } from "@/components/ui/feedback";
 import { useI18n } from "@/lib/i18n/provider";
+import { useCart } from "@/lib/cart/context";
+import { messageForError } from "@/lib/api/errors";
 import { formatINR } from "@/lib/utils/format";
 import type { ProductDetail, VariantView } from "@/lib/types/api";
 
@@ -17,12 +20,24 @@ export function ProductDetailView({
   variants: VariantView[];
 }) {
   const { t, localize } = useI18n();
+  const { addItem } = useCart();
+  const [cartError, setCartError] = useState<string | null>(null);
 
   const mrp = product.pricing.mrp;
   const effective = product.pricing.effectivePrice;
   const savings = mrp && mrp > effective ? mrp - effective : null;
 
   const paragraphs = useMemo(() => (product.description ?? "").split(/\n+/).filter(Boolean), [product.description]);
+
+  const handleAddToCart = async ({ variantId, qty }: AddToCartPayload) => {
+    setCartError(null);
+    try {
+      await addItem({ productId: product.id, ...(variantId ? { variantId } : {}), qty });
+    } catch (caught) {
+      setCartError(messageForError(caught));
+      throw caught;
+    }
+  };
 
   return (
     <div className="grid gap-10 md:grid-cols-2">
@@ -64,7 +79,18 @@ export function ProductDetailView({
           </p>
         </div>
 
-        <VariantSelector variants={variants} basePrice={product.pricing.basePrice} />
+        <VariantSelector
+          variants={variants}
+          basePrice={product.pricing.basePrice}
+          moq={product.pricing.moq}
+          onAddToCart={handleAddToCart}
+        />
+
+        <FormFeedback kind="error">{cartError}</FormFeedback>
+
+        <Link href="/cart" className="text-sm font-medium text-amber-700 hover:underline">
+          {t("viewCart")}
+        </Link>
 
         {product.materialText ? (
           <div>

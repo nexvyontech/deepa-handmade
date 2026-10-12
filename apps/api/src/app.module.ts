@@ -22,6 +22,11 @@ import { PricingModule } from './modules/pricing/PricingModule.js';
 import { MediaModule } from './modules/media/MediaModule.js';
 import { CmsModule } from './modules/cms/CmsModule.js';
 import { SeoModule } from './modules/seo/SeoModule.js';
+import { SettingsModule } from './modules/settings/SettingsModule.js';
+import { ShippingModule } from './modules/shipping/ShippingModule.js';
+import { CartModule } from './modules/cart/CartModule.js';
+import { AddressesModule } from './modules/addresses/AddressesModule.js';
+import { CheckoutModule } from './modules/checkout/CheckoutModule.js';
 
 @Module({
   imports: [
@@ -42,6 +47,11 @@ import { SeoModule } from './modules/seo/SeoModule.js';
     MediaModule,
     CmsModule,
     SeoModule,
+    SettingsModule,
+    ShippingModule,
+    CartModule,
+    AddressesModule,
+    CheckoutModule,
   ],
   controllers: [AppController],
   providers: [
