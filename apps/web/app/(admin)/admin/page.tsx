@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
+import { AdminDashboard } from "@/components/admin/dashboard";
 
 export const metadata: Metadata = {
-  title: "Admin",
+  title: "Admin dashboard | Deepa Handmade",
+  robots: { index: false, follow: false },
 };
 
 export default function AdminDashboardPage() {
-  return (
-    <section className="flex flex-col gap-4">
-      <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-      <p className="text-stone-600">
-        Admin modules (orders, products, inventory, production, QC, packing,
-        shipping, reports, settings) will be built in later phases.
-      </p>
-    </section>
-  );
+  return <AdminDashboard />;
 }
